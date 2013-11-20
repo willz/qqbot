@@ -43,11 +43,15 @@ class WebQQClient:
         print r.text
         pattern = re.compile(".*?'(.*?)'.*?'(.*?)'.*?'(.*?)'")
         m = pattern.search(r.text)
+        vcode = m.group(2)
         if m.group(1) == '1':
             # well, need input validation code
             print 'Need validation code'
+            url = 'https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.9296404102351516&uin={0}'.format(uid)
+            print url
+            vcode = raw_input('Input validation code: ')
         self.params["u1"] += "?login2qq={0}&webqq_type={1}".format(self.params["login2qq"], self.params["webqq_type"])
-        self.params.update({"verifycode":m.group(2), "p":encrypt_passwd(passwd, m.group(2), m.group(3))})
+        self.params.update({"verifycode":vcode, "p":encrypt_passwd(passwd, vcode, m.group(3))})
 
         # login stage 1
         keys = ("u", "p", "verifycode", "webqq_type", "remember_uin", "login2qq", "aid",
