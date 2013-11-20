@@ -3,10 +3,18 @@ from webqqclient import *
 import gevent
 from gevent.queue import Queue, Empty
 
+
 class QQBot:
     def __init__(self):
         self.client = WebQQClient()
         self.queue = Queue()
+        self.apps = []
+        for app_name in configs.apps:
+            # get class from apps dir
+            module = __import__("apps.{0}".format(app_name.lower()))
+            module = getattr(module, app_name.lower())
+            module = getattr(module, app_name)
+            self.apps.append(module)
         pass
 
     def run(self):
@@ -14,11 +22,11 @@ class QQBot:
         self.client.get_group_info()
         
         #thread1 = gevent.spawn(self._heartbeat)
-        #thread2 = gevent.spawn(self._poll_msg)
-        self._poll_msg()
-        #thread3 = gevent.spawn(self._chat)
+        thread2 = gevent.spawn(self._poll_msg)
+        #self._poll_msg()
+        thread3 = gevent.spawn(self._chat)
 
-        threads = [thread1, thread2]
+        threads = [thread3, thread2]
         gevent.joinall(threads)
 
 
@@ -38,15 +46,18 @@ class QQBot:
                 print msg
                 if msg['type'] == 'group_message':
                     print msg['content']
-                    self.client.send_group_msg(msg['from_uin'], msg['content'])
+                    #self.client.send_group_msg(msg['from_uin'], msg['content'])
 
     def _chat(self):
         while True:
             try:
                 msg = self.queue.get(timeout = 1)
                 if msg['type'] == 'group_message':
-                    print msg['content']
-                    self.client.send_group_msg(msg['from_uin'], msg['content'])
+                    for app in self.apps:
+                        pat = re.compile(app.pattern)
+                        if pat.match(msg['content']):
+                            self.client.send_group_msg(msg['from_uin'], app().execute(msg))
+                            break
             except Empty:
                 pass
 

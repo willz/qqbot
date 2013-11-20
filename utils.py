@@ -1,5 +1,4 @@
 import sys
-import pkgutil
 import hashlib
 import time
 import random
@@ -28,11 +27,3 @@ class Counter:
     def get(self):
         self.count += 1
         return self.count
-
-def load_all_modules_from_dir(dirname):
-    for importer, pkg_name, _ in pkgutil.iter_modules([dirname]):
-        print importer, pkg_name
-        full_pkg_name = '{0}.{1}'.format(dirname, pkg_name)
-        if full_pkg_name not in sys.modules:
-            # hasn't loaded
-            print importer.find_module(pkg_name).load_module(full_pkg_name)

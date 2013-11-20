@@ -5,13 +5,14 @@ import random
 import utils
 from utils import encrypt_passwd
 from gevent import monkey
-#monkey.patch_all()
+monkey.patch_all()
 
 
 class WebQQClient:
     WEBQQ_URL = 'http://web2.qq.com'
     def __init__(self):
         self.s = requests.session()
+        self.poll_s = requests.session()
         self.params = {"daid":"164", "appid":"1003903", "js_ver":"10052",
                 "js_type":"0", "enable_qlogin":"0", "aid":"1003903", "h":"1",
                 "webqq_type":"10", "remember_uin":"1", "login2qq":"1",
@@ -22,7 +23,7 @@ class WebQQClient:
                 "clientid": str(random.randint(1, 10000000))}
         self.msg_id = utils.Counter()
         self.msg_handler = MessageHandler()
-        self.groups = []
+        self.groups = {}
         pass
 
     def login(self, uid, passwd):
@@ -59,7 +60,6 @@ class WebQQClient:
         pattern = re.compile(".*?,.*?,.*?'(.*?)'")
         self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2'
         r = self.s.get(pattern.search(r.text).group(1))
-        print r.text
 
         # login stage 2
         payload = {"clientid":self.params["clientid"], "psessionid":"null"}
@@ -78,33 +78,40 @@ class WebQQClient:
         r_value = payload.copy()
         r_value.update({'key':0, 'ids':[]})
         payload['r'] = json.dumps(r_value)
-        #self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
-        headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3',
-                   'connection': 'keep-alive'}
+        self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
+        #headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
         print 'here'
-        #r = self.s.post(url, data = payload)
-        r = requests.post(url, data = payload, headers = headers)
+        r = self.s.post(url, data = payload, stream = False)
+        #r = self.poll_s.post(url, data = payload, headers = headers)
         print r.request.headers
-        print 'extraly'
+        print r.headers
+        #print 'extraly'
         ret = json.loads(r.text)
         msgs = []
         if ret['retcode'] == 0:
+            # TODO ugly code here! need to refine
+            # it maybe better to use redis or other db to store/query
             for info in ret['result']:
                 msg = self.msg_handler.produce(info['poll_type'], info['value'])
+                if msg['type'] == 'group_message':
+                    for minfo in self.groups[msg['from_uin']]['minfo']:
+                        if minfo['uin'] == msg['send_uin']:
+                            msg['send_nick'] = minfo['nick']
+                            break
                 msgs.append(msg)
         return msgs
 
     def get_group_info(self):
         url = 'http://s.web2.qq.com/api/get_group_name_list_mask2'
         payload = {'vfwebqq': self.params['vfwebqq']}
-        headers = {'referer': 'http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1'}
-        r = requests.post(url, data = payload, headers = headers, cookies = self.s.cookies)
+        self.s.headers['referer'] =  'http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1'
+        r = self.s.post(url, data = payload)
         print r.text
         ret = json.loads(r.text)
-        self.groups = ret['result']['gnamelist']
+        self.groups = { g['gid']: g for g in ret['result']['gnamelist'] }
         print self.groups
         url = 'http://s.web2.qq.com/api/get_group_info_ext2'
-        for group in self.groups:
+        for group in self.groups.values():
             payload = {'gcode': group['code'], 'vfwebqq': self.params['vfwebqq'], 't': utils.ctime()}
             self.s.headers['referer'] = 'http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1'
             r = self.s.get(url, params = payload)
@@ -117,13 +124,15 @@ class WebQQClient:
         url = 'http://d.web2.qq.com/channel/send_qun_msg2'
         payload = self._get_subdict(("clientid", "psessionid"))
         r_value = payload.copy()
+        print msg
         r_value.update({'group_uin': gid, 'msg_id': self.msg_id.get(),
-                        'content': '''["{0}", []]'''.format(msg.decode('utf-8'))})
+                        'content': u'''["{0}", []]'''.format(msg)})
         payload['r'] = json.dumps(r_value)
         print payload['r']
-        #self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
-        headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
-        r = requests.post(url, data = payload, headers = headers)
+        self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
+        #headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
+        #r = requests.post(url, data = payload, headers = headers)
+        r = self.s.post(url, data = payload)
         print r.text
 
     def keep_alive(self):
