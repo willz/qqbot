@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from datetime import datetime
+import operator
 
 class GameVote(object):
     pattern = '(?:-ready\s*|-status\s*|-afk\s*)\Z'
@@ -14,22 +15,22 @@ class GameVote(object):
         elif msg['content'][1] == 's':
             # status
             now = datetime.now()
-            for k, v in GameVote.state.items():
+            for k, v in sorted(GameVote.state.items(), key = operator.itemgetter(1), reverse = True):
                 diff = (now - datetime.fromtimestamp(v)).seconds
                 tips = u''
                 if diff < 10:
-                    tips = u'刚刚'
+                    tips = u'刚刚 )'
                 elif diff < 60:
-                    tips = str(diff) + u'秒前'
+                    tips = str(diff) + u'秒前 )'
                 elif diff < 3600:
-                    tips = str(diff / 60) + u'分钟前'
+                    tips = str(diff / 60) + u'分钟前 )'
                 elif diff < 10800:
-                    tips = str(diff / 3600) + u'小时前'
+                    tips = str(diff / 3600) + u'小时前 ) *'
                 else:
                     # remove record (3 hours passed)
                     del GameVote.state[k]
                     continue
-                content += qqdata[k]['nick'] + ": READY ( " + tips + " )\\r"
+                content += qqdata[k]['nick'] + ": READY ( " + tips + "\\r"
             if content == '':
                 # no one want to play
                 content = u'暂时没人想玩'
