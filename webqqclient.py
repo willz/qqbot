@@ -3,6 +3,7 @@ import re
 import json
 import random
 import utils
+import configs
 from utils import encrypt_passwd
 from gevent import monkey
 monkey.patch_all()
@@ -97,11 +98,6 @@ class WebQQClient:
             # it maybe better to use redis or other db to store/query
             for info in ret['result']:
                 msg = self.msg_handler.produce(info['poll_type'], info['value'])
-                if msg['type'] == 'group_message':
-                    for minfo in self.groups[msg['from_uin']]['minfo']:
-                        if minfo['uin'] == msg['send_uin']:
-                            msg['send_nick'] = minfo['nick']
-                            break
                 msgs.append(msg)
         return msgs
 
@@ -121,7 +117,9 @@ class WebQQClient:
             r = self.s.get(url, params = payload)
             ret = json.loads(r.text)
             # member info
-            group['minfo'] = ret['result']['minfo']
+            group['minfo'] = {}
+            for m in ret['result']['minfo']:
+                group['minfo'][m['uin']] = {'nick': m['nick'], 'qq': self.get_qq_from_uin(m['uin'])}
         print self.groups
 
     def send_group_msg(self, gid, msg):
@@ -129,8 +127,9 @@ class WebQQClient:
         payload = self._get_subdict(("clientid", "psessionid"))
         r_value = payload.copy()
         print msg
+        style = json.dumps(configs.font)
         r_value.update({'group_uin': gid, 'msg_id': self.msg_id.get(),
-                        'content': u'''["{0}", []]'''.format(msg)})
+                        'content': u'''["{0}", {1}]'''.format(msg, style)})
         payload['r'] = json.dumps(r_value)
         print payload['r']
         self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
@@ -138,6 +137,16 @@ class WebQQClient:
         #r = requests.post(url, data = payload, headers = headers)
         r = self.s.post(url, data = payload)
         print r.text
+
+    def get_qq_from_uin(self, uin):
+        url = 'http://s.web2.qq.com/api/get_friend_uin2'
+        payload = {'tuin': uin, 'type': 1, 'vfwebqq': self.params['vfwebqq'], 't': utils.ctime(),
+                   'verifysession': '', 'code': ''}
+        self.s.headers['referer'] = 'http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1'
+        r = self.s.get(url, params = payload)
+        ret = json.loads(r.text)
+        return ret['result']['account']
+
 
     def keep_alive(self):
         url = 'http://web2.qq.com/web2/get_msg_tip?uin=&tp=1&id=0&retype=1&rc=150&lv=3&t=' + utils.ctime()

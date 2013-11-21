@@ -52,12 +52,15 @@ class QQBot:
         while True:
             try:
                 msg = self.queue.get(timeout = 1)
-                if msg['type'] == 'group_message':
-                    for app in self.apps:
-                        pat = re.compile(app.pattern)
-                        if pat.match(msg['content']):
-                            self.client.send_group_msg(msg['from_uin'], app().execute(msg))
-                            break
+                if msg['type'] != 'group_message':
+                    continue
+                for app in self.apps:
+                    pat = re.compile(app.pattern)
+                    if pat.match(msg['content']):
+                        gid = msg['from_uin']
+                        content = app().execute(msg, self.client.groups[gid]['minfo'])
+                        self.client.send_group_msg(gid, content)
+                        break
             except Empty:
                 pass
 
