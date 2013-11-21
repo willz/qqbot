@@ -19,17 +19,21 @@ class QQBot:
 
     def run(self):
         self.client.login(configs.qq, configs.password)
-        self.client.get_group_info()
-        
+        #self.client.get_group_info()
+        thread1 = gevent.spawn(self._update_group_info)
         #thread1 = gevent.spawn(self._heartbeat)
         thread2 = gevent.spawn(self._poll_msg)
         #self._poll_msg()
         thread3 = gevent.spawn(self._chat)
 
-        threads = [thread3, thread2]
+        threads = [thread1, thread2, thread3]
         gevent.joinall(threads)
 
 
+    def _update_group_info(self):
+        while True:
+            self.client.get_group_info()
+            gevent.sleep(60)
 
     def _heartbeat(self):
         while True:
