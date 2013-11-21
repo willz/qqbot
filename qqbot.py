@@ -33,7 +33,8 @@ class QQBot:
     def _update_group_info(self):
         while True:
             self.client.get_group_info()
-            gevent.sleep(60)
+            # refresh group info every 2 hour
+            gevent.sleep(7200)
 
     def _heartbeat(self):
         while True:
