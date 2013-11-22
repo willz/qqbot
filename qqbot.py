@@ -8,6 +8,7 @@ from gevent.queue import Queue, Empty
 
 class QQBot:
     def __init__(self):
+        self._exit = False
         self.client = WebQQClient()
         self.queue = Queue()
         self.apps = []
@@ -33,10 +34,15 @@ class QQBot:
 
 
     def _update_group_info(self):
-        while True:
-            self.client.get_group_info()
-            # refresh group info every 2 hour
-            gevent.sleep(7200)
+        count = 0
+        while not self._exit:
+            if count <= 0:
+                self.client.get_group_info()
+                count = 7200
+                # refresh group info every 2 hour
+            else:
+                count -= 1
+            gevent.sleep(1)
 
     def _heartbeat(self):
         while True:
@@ -44,16 +50,18 @@ class QQBot:
             gevent.sleep(60)
 
     def _poll_msg(self):
-        while True:
+        while not self._exit:
             try:
                 ret = self.client.poll_msg()
                 for msg in ret:
                     self.queue.put(msg)
+            except WebQQExit:
+                self._exit = True
             except Exception:
                 logging.exception('_poll_msg')
 
     def _chat(self):
-        while True:
+        while not self._exit:
             try:
                 msg = self.queue.get(timeout = 1)
                 if msg['type'] != 'group_message':
@@ -73,6 +81,8 @@ class QQBot:
 
 if __name__ == '__main__':
     logging.basicConfig(filename = os.path.join(os.getcwd(), 'log.txt'), level = logging.WARN)
-    bot = QQBot()
-    bot.run()
+    while True:
+        logging.warning('Start a qq robot')
+        bot = QQBot()
+        bot.run()
 

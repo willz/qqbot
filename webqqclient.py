@@ -9,6 +9,11 @@ from utils import encrypt_passwd
 from gevent import monkey
 monkey.patch_all()
 
+class WebQQException(Exception):
+    pass
+
+class WebQQExit(Exception):
+    pass
 
 class WebQQClient:
     WEBQQ_URL = 'http://web2.qq.com'
@@ -98,6 +103,10 @@ class WebQQClient:
         elif retcode == 102:
             # no message received
             pass
+        elif retcode == 100 or retcode == 120 or retcode == 121:
+            # need to relogin
+            logging.error('poll_msg: need to relogin: %s', r.text)
+            raise WebQQExit
         else:
             # some unknown error
             logging.error('poll_msg error: %s', r.text)
