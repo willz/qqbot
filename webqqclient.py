@@ -85,12 +85,8 @@ class WebQQClient:
         payload['r'] = json.dumps(r_value)
         self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
         #headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
-        print 'here'
         r = self.s.post(url, data = payload, stream = False)
         #r = self.poll_s.post(url, data = payload, headers = headers)
-        print r.request.headers
-        print r.headers
-        #print 'extraly'
         ret = json.loads(r.text)
         msgs = []
         if ret['retcode'] == 0:
@@ -106,10 +102,8 @@ class WebQQClient:
         payload = {'vfwebqq': self.params['vfwebqq']}
         self.s.headers['referer'] =  'http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1'
         r = self.s.post(url, data = payload)
-        print r.text
         ret = json.loads(r.text)
         self.groups = { g['gid']: g for g in ret['result']['gnamelist'] }
-        print self.groups
         url = 'http://s.web2.qq.com/api/get_group_info_ext2'
         for group in self.groups.values():
             payload = {'gcode': group['code'], 'vfwebqq': self.params['vfwebqq'], 't': utils.ctime()}
@@ -126,17 +120,14 @@ class WebQQClient:
         url = 'http://d.web2.qq.com/channel/send_qun_msg2'
         payload = self._get_subdict(("clientid", "psessionid"))
         r_value = payload.copy()
-        print msg
         style = json.dumps(configs.font)
         r_value.update({'group_uin': gid, 'msg_id': self.msg_id.get(),
                         'content': u'''["{0}", {1}]'''.format(msg, style)})
         payload['r'] = json.dumps(r_value)
-        print payload['r']
         self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
         #headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
         #r = requests.post(url, data = payload, headers = headers)
         r = self.s.post(url, data = payload)
-        print r.text
 
     def get_qq_from_uin(self, uin):
         url = 'http://s.web2.qq.com/api/get_friend_uin2'

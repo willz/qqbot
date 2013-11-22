@@ -43,15 +43,12 @@ class QQBot:
 
     def _poll_msg(self):
         while True:
-            print 'start'
-            ret = self.client.poll_msg()
-            print 'end'
-            for msg in ret:
-                self.queue.put(msg)
-                print msg
-                if msg['type'] == 'group_message':
-                    print msg['content']
-                    #self.client.send_group_msg(msg['from_uin'], msg['content'])
+            try:
+                ret = self.client.poll_msg()
+                for msg in ret:
+                    self.queue.put(msg)
+            except Exception as e:
+                print e
 
     def _chat(self):
         while True:
@@ -68,6 +65,8 @@ class QQBot:
                         break
             except Empty:
                 pass
+            except Exception as e:
+                print e
 
 
 if __name__ == '__main__':

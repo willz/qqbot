@@ -12,7 +12,7 @@ class GameVote(object):
             # ready
             #content = u'{0} 的大斧已经饥渴难耐!'.format(qqdata[uin]['nick'])
             GameVote.state[uin] = msg['time']
-        if msg['content'][1] == 's' || msg['content'][1] == 'r':
+        if msg['content'][1] == 's' or msg['content'][1] == 'r':
             # status
             now = datetime.now()
             for k, v in sorted(GameVote.state.items(), key = operator.itemgetter(1), reverse = True):
