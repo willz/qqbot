@@ -4,6 +4,7 @@ import json
 import random
 import utils
 import configs
+import logging
 from utils import encrypt_passwd
 from gevent import monkey
 monkey.patch_all()
@@ -88,13 +89,18 @@ class WebQQClient:
         r = self.s.post(url, data = payload, stream = False)
         #r = self.poll_s.post(url, data = payload, headers = headers)
         ret = json.loads(r.text)
+        retcode = ret['retcode']
         msgs = []
-        if ret['retcode'] == 0:
-            # TODO ugly code here! need to refine
-            # it maybe better to use redis or other db to store/query
+        if retcode == 0:
             for info in ret['result']:
                 msg = self.msg_handler.produce(info['poll_type'], info['value'])
                 msgs.append(msg)
+        elif retcode == 102:
+            # no message received
+            pass
+        else:
+            # some unknown error
+            logging.error('poll_msg error: %s', r.text)
         return msgs
 
     def get_group_info(self):
@@ -125,9 +131,11 @@ class WebQQClient:
                         'content': u'''["{0}", {1}]'''.format(msg, style)})
         payload['r'] = json.dumps(r_value)
         self.s.headers['referer'] = 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'
-        #headers = {'referer': 'http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3'}
-        #r = requests.post(url, data = payload, headers = headers)
         r = self.s.post(url, data = payload)
+        ret = json.loads(r.text)
+        if ret['retcode'] != 0:
+            # send group message eror
+            logging.error('send_group_msg error: %s , form data: %s', r.text, payload)
 
     def get_qq_from_uin(self, uin):
         url = 'http://s.web2.qq.com/api/get_friend_uin2'

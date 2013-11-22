@@ -1,6 +1,8 @@
+import os
 import configs
 from webqqclient import *
 import gevent
+import logging
 from gevent.queue import Queue, Empty
 
 
@@ -47,8 +49,8 @@ class QQBot:
                 ret = self.client.poll_msg()
                 for msg in ret:
                     self.queue.put(msg)
-            except Exception as e:
-                print e
+            except Exception:
+                logging.exception('_poll_msg')
 
     def _chat(self):
         while True:
@@ -65,11 +67,12 @@ class QQBot:
                         break
             except Empty:
                 pass
-            except Exception as e:
-                print e
+            except Exception:
+                logging.exception('_chat')
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename = os.path.join(os.getcwd(), 'log.txt'), level = logging.WARN)
     bot = QQBot()
     bot.run()
 
